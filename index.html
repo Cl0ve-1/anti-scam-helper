@@ -635,52 +635,96 @@
     function toggleVoice() { isRecording ? stopVoice() : startVoice(); }
 
     function startVoice() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        alert("此瀏覽器不支援語音輸入，請改用 Chrome / Safari，或直接貼上短訊檢查。");
+      let mediaRecorder = null;
+    let audioChunks = [];
+    let micStream = null;
+
+    async function startVoice() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("此瀏覽器不支援麥克風錄音，請改用 Chrome 或 Safari。");
         return;
       }
       window.speechSynthesis.cancel();
-      finalTranscript = msgInput.value.trim();
 
-      recognition = new SR();
-      recognition.lang = currentLang;
-      recognition.continuous = true;
-      recognition.interimResults = true;
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : (MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "");
 
-      recognition.onstart = () => {
+        mediaRecorder = mimeType
+          ? new MediaRecorder(micStream, { mimeType })
+          : new MediaRecorder(micStream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          if (micStream) {
+            micStream.getTracks().forEach(t => t.stop());
+            micStream = null;
+          }
+          if (audioChunks.length === 0) return;
+
+          const ext = (mediaRecorder.mimeType || "").includes("mp4") ? "mp4" : "webm";
+          const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+          await uploadAudioToSIS(blob, ext);
+        };
+
+        mediaRecorder.start();
         isRecording = true;
         voiceBtn.classList.add("recording");
         voiceIcon.textContent = "⏹️";
-        voiceText.textContent = "正在聆聽... 按此停止";
-        voiceHint.textContent = "請慢慢講，講完再按上面紅色按鈕停止";
-      };
-
-      recognition.onresult = (event) => {
-        let interim = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const t = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += (finalTranscript ? "，" : "") + t;
-          } else {
-            interim += t;
-          }
-        }
-        msgInput.value = finalTranscript + (interim ? (finalTranscript ? "，" : "") + interim : "");
-      };
-
-      recognition.onerror = (e) => {
-        voiceHint.textContent = e.error === "not-allowed" ? "請允許瀏覽器使用麥克風權限" : "語音暫停，可以直接按檢查或再講一次";
+        voiceText.textContent = "正在錄音... 講完按此停止";
+        voiceHint.textContent = "講完按上面紅色按鈕，系統會轉成廣東話文字";
+      } catch (err) {
+        voiceHint.textContent = "無法開啟麥克風，請確認瀏覽器已允許麥克風權限";
         resetVoiceUI();
-      };
-      recognition.onend = () => resetVoiceUI();
-
-      try { recognition.start(); } catch (e) { resetVoiceUI(); }
+      }
     }
 
     function stopVoice() {
-      if (recognition) { try { recognition.stop(); } catch (e) {} }
-      resetVoiceUI();
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+      isRecording = false;
+      voiceBtn.classList.remove("recording");
+      voiceIcon.textContent = "🎤";
+    }
+
+    async function uploadAudioToSIS(blob, ext) {
+      voiceBtn.disabled = true;
+      voiceText.textContent = "⏳ 正在辨識廣東話...";
+      voiceHint.textContent = "請稍候 1–2 秒";
+
+      try {
+        const formData = new FormData();
+        formData.append("file", blob, `voice.${ext}`);
+        formData.append("lang", currentLang);
+
+        const res = await fetch("/api/transcribe", {
+          method: "POST",
+          body: formData
+        });
+        if (!res.ok) throw new Error("辨識失敗");
+        const data = await res.json();
+
+        if (data.text) {
+          const prev = msgInput.value.trim();
+          msgInput.value = prev ? (prev + "，" + data.text) : data.text;
+          voiceHint.textContent = "辨識完成！確認文字無誤後按下方檢查";
+        } else {
+          voiceHint.textContent = "剛才好像沒錄到聲音，請再試一次";
+        }
+      } catch (err) {
+        voiceHint.textContent = "語音辨識失敗，請再試一次或直接打字";
+      } finally {
+        voiceBtn.disabled = false;
+        voiceText.textContent = "按一下開始講話";
+      }
+    }
     }
 
     function resetVoiceUI() {
