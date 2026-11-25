@@ -1,15 +1,27 @@
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
-from openai import AsyncOpenAI
-import datetime
+import asyncio
+import base64
 import json
-import re
 import os
+import re
+import subprocess
+import tempfile
+from pathlib import Path
 
-app = FastAPI(title="反詐騙一鍵求救 API")
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from huaweicloudsdkcore.auth.credentials import BasicCredentials
+from huaweicloudsdksis.v1 import (
+    Config,
+    PostShortAudioReq,
+    RecognizeShortAudioRequest,
+    SisClient,
+)
+from huaweicloudsdksis.v1.region.sis_region import SisRegion
+from openai import AsyncOpenAI
+from pydantic import BaseModel
+
+app = FastAPI(title="安心防詐助手 API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,175 +33,181 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# ==========================================
-# 今晚拿到華為雲 MaaS 資訊後，填入這三行即可（保留引號）
-# ==========================================
-
-
-# 改為從 Render 雲端環境變數讀取（安全且不會外洩）
+# 華為雲 MaaS 大模型設定
 HUAWEI_API_KEY = os.getenv("HUAWEI_API_KEY", "")
 HUAWEI_BASE_URL = os.getenv("HUAWEI_BASE_URL", "https://api.modelarts-maas.com/v2")
 HUAWEI_MODEL_NAME = os.getenv("HUAWEI_MODEL_NAME", "openpangu-2.0-flash")
 
-SYSTEM_PROMPT = """你是一位專門保護長輩的反詐騙心理安撫與鑑定助手。
-長輩現在可能正處於驚慌或困惑中，請分析長輩提供的對話、語音轉錄或短訊內容，判斷是否為詐騙。
-
-請嚴格只回傳一個純 JSON 物件（不要加上多餘文字），格式如下：
-{
-  "risk_level": "high 或 safe",
-  "scam_type": "若是詐騙請寫類型（例如：假冒公檢法、猜猜我是誰、假中獎、假投資），安全則寫無明顯風險",
-  "reply_message": "給長輩看並朗讀出來的回覆（60至90字以內，繁體中文，語氣要溫暖、鎮定、像家人一樣；先安撫情緒，再點出破綻，最後給出一個明確的保護動作，例如立刻掛斷或不要轉帳）"
-}
-注意：只要涉及要求轉帳、匯款、安全帳戶、說出驗證碼、點擊不明連結、自稱警察/海關/檢察官/客服要求配合調查，risk_level 一律判定為 "high"。"""
-
-
-# 啟動時只建立一次客戶端，重複利用連線（省下每次重新 SSL 握手的時間）
-ai_client = AsyncOpenAI(
+llm_client = AsyncOpenAI(
     api_key=HUAWEI_API_KEY,
     base_url=HUAWEI_BASE_URL,
-    timeout=20.0,
-    max_retries=0
-) if (HUAWEI_API_KEY and HUAWEI_BASE_URL) else None
+)
 
-SYSTEM_PROMPT = """你是一位專門保護長輩的反詐騙心理安撫與鑑定助手。
-請分析長輩提供的對話、語音轉錄或短訊內容，判斷是否為詐騙。
+# 第一層：高危關鍵詞與釣魚特徵快速規則
+HIGH_RISK_RULES = [
+    ("假冒公檢法詐騙", ["安全帳戶", "安全账户", "洗黑錢", "洗黑钱", "通緝令", "通缉令", "拘捕令", "清查資金", "清查资金", "資產公證", "资产公证", "凍結資產", "冻结资产"]),
+    ("假冒客服／遠程控屏詐騙", ["螢幕共享", "屏幕共享", "遠程控制", "远程控制", "百萬保障", "百万保障", "自動扣費", "自动扣费"]),
+    ("猜猜我是誰（假冒親友）", ["住院按金", "保釋金", "保释金", "俾人拉咗", "換咗新號碼", "换了新号码"]),
+    ("驗證碼／轉帳高危話術", ["驗證碼", "验证码", "唔好同屋企人講", "不要告訴家人", "不要告诉家人", "保密協議", "保密协议"]),
+]
 
-請嚴格只回傳一個純 JSON 物件（不要加上多餘文字），格式如下：
+PHISHING_URL_PATTERN = re.compile(r"(https?://\S+|www\.\S+|\S+\.(xyz|top|vip|club|cc|info|icu|tk)\b)", re.IGNORECASE)
+PHISHING_HINTS = ["封禁", "凍結", "冻结", "異常", "异常", "解除", "積分", "积分", "過期", "过期", "包裹", "領取", "领取", "驗證", "验证", "撳", "點擊", "点击"]
+
+SYSTEM_PROMPT = """你是一位專為港澳長輩服務的「安心防詐助手」。
+輸入的內容可能包含粵語口語（例如：過數＝轉帳、撳＝點擊、俾＝給、呃＝騙、差佬＝警察、戶口＝帳戶、急住要錢＝急需借錢）。
+
+請判斷該訊息或通話內容是否涉及詐騙，並嚴格只輸出以下 JSON 格式（不要輸出任何多餘文字或 Markdown 標記）：
 {
-  "risk_level": "high 或 safe",
-  "scam_type": "若是詐騙請寫類型（例如：釣魚網站短訊、假冒公檢法、猜猜我是誰、假中獎、假投資），安全則寫無明顯風險",
-  "reply_message": "給長輩看並朗讀出來的回覆（60至90字以內，繁體中文，語氣溫暖鎮定；先安撫情緒，再點出破綻，最後給出一個明確的保護動作，例如千萬不要點連結或立刻掛斷）"
+  "risk_level": "high" 或 "safe",
+  "scam_type": "簡短詐騙類型名稱（若安全則寫『一般正常訊息』）",
+  "reply_message": "用溫暖、簡單、長輩易懂的繁體中文回覆（60至100字內），明確講出是否危險，並給出具體做法（例如：立刻掛線、不要點擊連結、先打原本電話找家人確認）。"
 }
-高風險判定規則（符合任一項 risk_level 一律為 "high"）：
-1. 內容包含不明網址/連結，且伴隨「帳號風險、即將封禁、凍結、異常、解除限制、積分過期」等威脅或催促。
-2. 網址拼寫有仿冒破綻（例如用 vv 假冒 w、拼錯官方品牌名稱如 vvhtasapp）。
-3. 要求轉帳、借錢、匯款、安全帳戶、說出驗證碼、自稱公檢法/海關/客服要求配合調查。"""
+
+判斷原則：
+1. 凡是涉及要求轉帳、借錢、交按金、點陌生網址、開螢幕共享、交出銀行密碼或短訊驗證碼、自稱公檢法或客服威脅扣費／封禁帳號，一律判為 "high"。
+2. 寧可從嚴保護長輩，只要有明顯可疑跡象就判為 "high"。
+"""
 
 
-class SOSRequest(BaseModel):
-    user_id: str
+class SosRequest(BaseModel):
+    user_id: str = "elder_01"
     message: str
 
 
-def fast_phishing_url_check(message: str) -> dict | None:
-    """第一層：高速規則引擎（< 0.05 秒秒判釣魚網址短訊，不花 Token）"""
-    url_pattern = r"(https?://\S+|www\.\S+|[a-zA-Z0-9-]+\.(?:com|net|org|cn|hk|mo|tw|top|xyz|vip|cc|site|online|app)\b\S*)"
-    urls = re.findall(url_pattern, message, flags=re.IGNORECASE)
-    if not urls:
-        return None
+def rule_based_check(text: str):
+    """第一層：毫秒級本地關鍵詞與釣魚連結初篩"""
+    for scam_type, keywords in HIGH_RISK_RULES:
+        for kw in keywords:
+            if kw in text:
+                return {
+                    "risk_level": "high",
+                    "scam_type": scam_type,
+                    "reply_message": f"高度危險！內容提到「{kw}」，這是非常典型的{scam_type}手法。請千萬不要轉帳、不要開啟螢幕共享，也不要透露驗證碼，立刻掛斷電話或刪除訊息，並打給家人確認！",
+                }
 
-    phishing_triggers = [
-        "風險", "风险", "封禁", "停用", "凍結", "冻结", "解除", "異常", "异常",
-        "過期", "过期", "認證", "认证", "違規", "违规", "領取", "领取", "驗證", "验证"
-    ]
-    hit_triggers = [kw for kw in phishing_triggers if kw in message]
-
-    if hit_triggers:
+    if PHISHING_URL_PATTERN.search(text) and any(h in text for h in PHISHING_HINTS):
         return {
             "risk_level": "high",
-            "scam_type": "釣魚連結短訊（仿冒官方網站）",
-            "reply_message": f"不要怕，這是典型的釣魚詐騙短訊！騙子故意用「帳號封禁或風險」嚇你去點假網址（{urls[0]}），千萬不要點擊連結，也不要輸入帳號密碼，直接把短訊刪掉就好！"
+            "scam_type": "釣魚連結短訊詐騙",
+            "reply_message": "高度危險！這條訊息帶有可疑網址並催促你處理帳戶或包裹問題，極大機會是釣魚詐騙短訊。千萬不要點擊裡面的連結，直接刪除即可！",
         }
+
     return None
 
 
-def local_fallback_check(message: str, is_ai_error: bool = False) -> dict:
-    """本地備援檢測"""
-    danger_keywords = [
-        "警察", "公安", "檢察官", "凍結", "冻结", "轉帳", "转账", "匯款", "過數", "借錢",
-        "住院", "按金", "押金", "安全帳戶", "驗證碼", "验证码", "中獎", "緊急求助", "洗黑錢", "海關", "通緝", "出事"
-    ]
-    hit = [kw for kw in danger_keywords if kw in message]
-    if hit:
-        return {
-            "risk_level": "high",
-            "scam_type": f"命中高風險關鍵字({','.join(hit)})",
-            "reply_message": "不要怕，深呼吸！這非常可能是詐騙電話或短訊。千萬不要轉帳或借錢，也不要說出驗證碼，請直接掛斷電話，先打給家人確認！"
-        }
-    if is_ai_error:
-        return {
-            "risk_level": "high",
-            "scam_type": "網路繁忙（啟動安全防護）",
-            "reply_message": "剛才網路有點慢，沒能完成深度檢查。為了安全起見，只要涉及點擊陌生連結、借錢、轉帳或要驗證碼，一律先不要理會，直接打電話給家人確認！"
-        }
+def _parse_llm_json(raw_text: str) -> dict:
+    """容錯解析大模型回傳的 JSON"""
+    cleaned = raw_text.strip()
+    match = re.search(r"\{[\s\S]*\}", cleaned)
+    if match:
+        cleaned = match.group(0)
+    data = json.loads(cleaned)
+    risk = "high" if str(data.get("risk_level", "")).lower() == "high" else "safe"
     return {
-        "risk_level": "safe",
-        "scam_type": "無明顯風險",
-        "reply_message": "目前沒有發現明顯的常見詐騙字眼，但只要對方叫你給錢、點陌生連結或報驗證碼，一律不要理會。如果不放心，隨時按紅色按鈕找家人！"
+        "risk_level": risk,
+        "scam_type": str(data.get("scam_type") or ("疑似詐騙" if risk == "high" else "一般正常訊息")),
+        "reply_message": str(data.get("reply_message") or "請保持冷靜，凡涉及轉帳、借錢或點擊陌生連結，請先向家人確認。"),
     }
 
 
-async def analyze_with_ai(message: str) -> dict:
-    """雙層檢測：先跑高速釣魚連結規則，再呼叫華為雲 MaaS 大模型"""
-    # 第一層：若是「網址 + 封禁/風險威脅」，0.05 秒直接攔截
-    fast_hit = fast_phishing_url_check(message)
-    if fast_hit:
-        print(">> [高速規則攔截] 命中釣魚網址短訊，免等 AI 直接警告！")
-        return fast_hit
+def _call_huawei_sis(audio_bytes: bytes, lang: str) -> str:
+    """將瀏覽器錄音轉為 16kHz 單聲道 WAV 並呼叫華為雲 SIS 辨識"""
+    ak = os.getenv("HUAWEI_AK", "")
+    sk = os.getenv("HUAWEI_SK", "")
+    region = os.getenv("HUAWEI_SIS_REGION", "cn-north-4")
 
-    if not ai_client or not HUAWEI_MODEL_NAME:
-        print(">> [提示] 尚未設定華為雲 API 參數，暫用本地關鍵字模式。")
-        return local_fallback_check(message)
+    if not ak or not sk:
+        raise RuntimeError("尚未設定 HUAWEI_AK 或 HUAWEI_SK 環境變數")
 
-    try:
-        response = await ai_client.chat.completions.create(
-            model=HUAWEI_MODEL_NAME,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"長輩收到的內容或描述：\n{message}"}
-            ],
-            temperature=0.1,
-            max_tokens=300,
+    with tempfile.NamedTemporaryFile(suffix=".input", delete=True) as f_in, \
+         tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as f_out:
+        f_in.write(audio_bytes)
+        f_in.flush()
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", f_in.name, "-ar", "16000", "-ac", "1", f_out.name],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
         )
-        raw_content = response.choices[0].message.content.strip()
-        print(f">> [AI 原始回覆] {raw_content}")
+        wav_bytes = f_out.read()
 
-        match = re.search(r"\{.*\}", raw_content, re.DOTALL)
-        if not match:
-            raise ValueError("AI 回覆中找不到 JSON 結構")
-        result = json.loads(match.group(0))
+    credentials = BasicCredentials(ak, sk)
+    client = (
+        SisClient.new_builder()
+        .with_credentials(credentials)
+        .with_region(SisRegion.value_of(region))
+        .build()
+    )
 
-        risk_level = "high" if result.get("risk_level") == "high" else "safe"
-        return {
-            "risk_level": risk_level,
-            "scam_type": result.get("scam_type", "AI 分析完成"),
-            "reply_message": result.get("reply_message", "請保持冷靜，不要轉帳或點擊不明連結，先打電話給家人確認！")
-        }
-    except Exception as e:
-        print(f">> [AI 呼叫異常，自動切換保守備援] 錯誤原因: {e}")
-        return local_fallback_check(message, is_ai_error=True)
+    model_prop = "cantonese_16k_common" if lang == "zh-HK" else "chinese_16k_general"
+    config = Config(audio_format="wav", _property=model_prop, add_punc="yes")
+    req = RecognizeShortAudioRequest(
+        body=PostShortAudioReq(
+            config=config,
+            data=base64.b64encode(wav_bytes).decode("utf-8"),
+        )
+    )
+    resp = client.recognize_short_audio(req)
+    return resp.result.text if resp.result and resp.result.text else ""
 
 
 @app.get("/")
 async def serve_home():
-    return FileResponse(BASE_DIR / "index.html")
+    index_path = BASE_DIR / "index.html"
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="找不到 index.html")
+    return FileResponse(index_path)
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 
 @app.post("/api/sos")
-async def trigger_sos(req: SOSRequest):
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"\n[{current_time}] 收到求救訊號！用戶: {req.user_id} | 內容: {req.message}")
+async def check_scam(req: SosRequest):
+    msg = req.message.strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="訊息內容不可為空")
 
-    if "長輩按下緊急求助按鈕" in req.message:
-        print(">> [緊急按鈕觸發] 立即通知家屬！")
+    # 1. 本地高危規則秒判
+    rule_hit = rule_based_check(msg)
+    if rule_hit:
+        return rule_hit
+
+    # 2. 華為雲 MaaS 大模型深度語意分析
+    try:
+        completion = await llm_client.chat.completions.create(
+            model=HUAWEI_MODEL_NAME,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": msg},
+            ],
+            temperature=0.2,
+            max_tokens=300,
+        )
+        content = completion.choices[0].message.content or ""
+        return _parse_llm_json(content)
+    except Exception:
         return {
-            "status": "success",
             "risk_level": "high",
-            "scam_type": "手動緊急求助",
-            "reply_message": "不要怕，深呼吸，你現在很安全！我們已經馬上通知家人，請先掛斷陌生電話，什麼都不要轉帳，家人立刻就會打給你！",
-            "action": "wait_for_call"
+            "scam_type": "系統連線繁忙（建議提高警覺）",
+            "reply_message": "剛才雲端分析稍微有點慢。記住，只要對方提到借錢、轉帳、點連結或要驗證碼，一律先停下來，打原本電話向家人確認！",
         }
 
-    analysis = await analyze_with_ai(req.message)
-    print(f">> [鑑定結果] 風險: {analysis['risk_level']} | 類型: {analysis['scam_type']}")
 
-    if analysis["risk_level"] == "high":
-        print(">> [高風險警報] 已觸發家屬通報流程！")
+@app.post("/api/transcribe")
+async def transcribe_audio(
+    file: UploadFile = File(...),
+    lang: str = Form("zh-HK"),
+):
+    audio_bytes = await file.read()
+    if not audio_bytes:
+        return {"text": ""}
 
-    return {
-        "status": "success",
-        "risk_level": analysis["risk_level"],
-        "scam_type": analysis["scam_type"],
-        "reply_message": analysis["reply_message"], 
-        "action": "wait_for_call" if analysis["risk_level"] == "high" else "none"
-    }
+    try:
+        text = await asyncio.to_thread(_call_huawei_sis, audio_bytes, lang)
+        return {"text": text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"語音辨識失敗: {str(e)}")
