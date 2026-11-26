@@ -12,9 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from huaweicloudsdkcore.auth.credentials import BasicCredentials
 from huaweicloudsdkocr.v1 import (
-    GeneralTextRequestBody,
     OcrClient,
-    RecognizeGeneralTextRequest,
+    RecognizeWebImageRequest,
+    WebImageRequestBody,
 )
 from huaweicloudsdkocr.v1.region.ocr_region import OcrRegion
 from huaweicloudsdksis.v1 import (
@@ -155,7 +155,7 @@ def _call_huawei_sis(audio_bytes: bytes, lang: str) -> str:
 
 
 def _call_huawei_ocr(image_bytes: bytes) -> str:
-    """呼叫華為雲 OCR 通用文字識別提取截圖文字"""
+    """呼叫華為雲 OCR 網絡圖片識別提取截圖文字"""
     ak = os.getenv("HUAWEI_AK", "")
     sk = os.getenv("HUAWEI_SK", "")
     region = os.getenv("HUAWEI_OCR_REGION", os.getenv("HUAWEI_SIS_REGION", "cn-north-4"))
@@ -172,16 +172,15 @@ def _call_huawei_ocr(image_bytes: bytes) -> str:
     )
 
     img_b64 = base64.b64encode(image_bytes).decode("utf-8")
-    req = RecognizeGeneralTextRequest(
-        body=GeneralTextRequestBody(image=img_b64)
+    req = RecognizeWebImageRequest(
+        body=WebImageRequestBody(image=img_b64)
     )
-    resp = client.recognize_general_text(req)
+    resp = client.recognize_web_image(req)
     if not resp.result or not resp.result.words_block_list:
         return ""
 
     lines = [block.words.strip() for block in resp.result.words_block_list if block.words and block.words.strip()]
     return "\n".join(lines)
-
 
 @app.get("/")
 async def serve_home():
