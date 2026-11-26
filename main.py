@@ -11,6 +11,12 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from huaweicloudsdkcore.auth.credentials import BasicCredentials
+from huaweicloudsdkocr.v1 import (
+    GeneralTextRequestBody,
+    OcrClient,
+    RecognizeGeneralTextRequest,
+)
+from huaweicloudsdkocr.v1.region.ocr_region import OcrRegion
 from huaweicloudsdksis.v1 import (
     Config,
     PostShortAudioReq,
@@ -33,7 +39,6 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# 華為雲 MaaS 大模型設定
 HUAWEI_API_KEY = os.getenv("HUAWEI_API_KEY", "")
 HUAWEI_BASE_URL = os.getenv("HUAWEI_BASE_URL", "https://api.modelarts-maas.com/v2")
 HUAWEI_MODEL_NAME = os.getenv("HUAWEI_MODEL_NAME", "openpangu-2.0-flash")
@@ -55,9 +60,9 @@ PHISHING_URL_PATTERN = re.compile(r"(https?://\S+|www\.\S+|\S+\.(xyz|top|vip|clu
 PHISHING_HINTS = ["封禁", "凍結", "冻结", "異常", "异常", "解除", "積分", "积分", "過期", "过期", "包裹", "領取", "领取", "驗證", "验证", "撳", "點擊", "点击"]
 
 SYSTEM_PROMPT = """你是一位專為港澳長輩服務的「安心防詐助手」。
-輸入的內容可能包含粵語口語（例如：過數＝轉帳、撳＝點擊、俾＝給、呃＝騙、差佬＝警察、戶口＝帳戶、急住要錢＝急需借錢）。
+輸入的內容可能來自語音轉錄或短訊／聊天截圖，包含粵語口語（例如：過數＝轉帳、撳＝點擊、俾＝給、呃＝騙、差佬＝警察、戶口＝帳戶、急住要錢＝急需借錢）。
 
-請判斷該訊息或通話內容是否涉及詐騙，並嚴格只輸出以下 JSON 格式（不要輸出任何多餘文字或 Markdown 標記）：
+請判斷該內容是否涉及詐騙，並嚴格只輸出以下 JSON 格式（不要輸出任何多餘文字或 Markdown 標記）：
 {
   "risk_level": "high" 或 "safe",
   "scam_type": "簡短詐騙類型名稱（若安全則寫『一般正常訊息』）",
@@ -76,7 +81,6 @@ class SosRequest(BaseModel):
 
 
 def rule_based_check(text: str):
-    """第一層：毫秒級本地關鍵詞與釣魚連結初篩"""
     for scam_type, keywords in HIGH_RISK_RULES:
         for kw in keywords:
             if kw in text:
@@ -97,7 +101,6 @@ def rule_based_check(text: str):
 
 
 def _parse_llm_json(raw_text: str) -> dict:
-    """容錯解析大模型回傳的 JSON"""
     cleaned = raw_text.strip()
     match = re.search(r"\{[\s\S]*\}", cleaned)
     if match:
@@ -112,7 +115,6 @@ def _parse_llm_json(raw_text: str) -> dict:
 
 
 def _call_huawei_sis(audio_bytes: bytes, lang: str) -> str:
-    """將瀏覽器錄音轉為 16kHz 單聲道 WAV 並呼叫華為雲 SIS 辨識"""
     ak = os.getenv("HUAWEI_AK", "")
     sk = os.getenv("HUAWEI_SK", "")
     region = os.getenv("HUAWEI_SIS_REGION", "cn-north-4")
@@ -152,6 +154,35 @@ def _call_huawei_sis(audio_bytes: bytes, lang: str) -> str:
     return resp.result.text if resp.result and resp.result.text else ""
 
 
+def _call_huawei_ocr(image_bytes: bytes) -> str:
+    """呼叫華為雲 OCR 通用文字識別提取截圖文字"""
+    ak = os.getenv("HUAWEI_AK", "")
+    sk = os.getenv("HUAWEI_SK", "")
+    region = os.getenv("HUAWEI_OCR_REGION", os.getenv("HUAWEI_SIS_REGION", "cn-north-4"))
+
+    if not ak or not sk:
+        raise RuntimeError("尚未設定 HUAWEI_AK 或 HUAWEI_SK 環境變數")
+
+    credentials = BasicCredentials(ak, sk)
+    client = (
+        OcrClient.new_builder()
+        .with_credentials(credentials)
+        .with_region(OcrRegion.value_of(region))
+        .build()
+    )
+
+    img_b64 = base64.b64encode(image_bytes).decode("utf-8")
+    req = RecognizeGeneralTextRequest(
+        body=GeneralTextRequestBody(image=img_b64)
+    )
+    resp = client.recognize_general_text(req)
+    if not resp.result or not resp.result.words_block_list:
+        return ""
+
+    lines = [block.words.strip() for block in resp.result.words_block_list if block.words and block.words.strip()]
+    return "\n".join(lines)
+
+
 @app.get("/")
 async def serve_home():
     index_path = BASE_DIR / "index.html"
@@ -171,12 +202,10 @@ async def check_scam(req: SosRequest):
     if not msg:
         raise HTTPException(status_code=400, detail="訊息內容不可為空")
 
-    # 1. 本地高危規則秒判
     rule_hit = rule_based_check(msg)
     if rule_hit:
         return rule_hit
 
-    # 2. 華為雲 MaaS 大模型深度語意分析
     try:
         completion = await llm_client.chat.completions.create(
             model=HUAWEI_MODEL_NAME,
@@ -211,3 +240,16 @@ async def transcribe_audio(
         return {"text": text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"語音辨識失敗: {str(e)}")
+
+
+@app.post("/api/ocr")
+async def extract_image_text(file: UploadFile = File(...)):
+    image_bytes = await file.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="圖片內容不可為空")
+
+    try:
+        text = await asyncio.to_thread(_call_huawei_ocr, image_bytes)
+        return {"text": text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"圖片文字辨識失敗: {str(e)}")
