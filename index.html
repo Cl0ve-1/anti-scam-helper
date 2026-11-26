@@ -1414,48 +1414,63 @@
       runPhoneCheck(val);
     }
 
-    function runPhoneCheck(raw) {
-      const num = raw.replace(/[\s\-()]/g, "");
-      let level = "warn";
-      let badge = "陌生號碼・請保持警覺";
-      let type = "風險評估：一般陌生來電";
-      let msg = "這個號碼沒有明顯境外改號特徵，但如果對方自稱親友借錢、客服退款或警察調查，請先掛斷再打原本電話向家人核實。";
-
-      if (["88007777", "999", "110", "18222"].includes(num)) {
-        level = "safe";
-        badge = "官方安全號碼";
-        type = "風險評估：警方／官方防詐熱線";
-        msg = "這是正規的官方防詐或緊急求助熱線，可以安心撥打查詢。";
-      } else if (/^(\+|00)(853|852)/.test(num)) {
-        level = "high";
-        badge = "極高風險・境外偽裝改號";
-        type = "風險評估：境外偽裝本地來電（常見於公檢法、猜猜我是誰）";
-        msg = "請特別小心！真正澳門或香港本地打來的電話，前面不會帶有 +853、+852 或 00。這類號碼極大機會是境外詐騙集團偽裝的，建議直接掛斷或拒接！";
-      } else if (/^(\+|00)/.test(num)) {
-        level = "high";
-        badge = "高風險・境外陌生來電";
-        type = "風險評估：境外國際長途號碼";
-        msg = "這是境外打來的電話。政府部門、銀行、海關和快遞公司絕對不會用境外號碼聯繫你處理帳戶異常或包裹問題，如無海外親友請勿接聽或回撥！";
-      } else if (/^(170|171|165|400|95\d{6,})/.test(num)) {
-        level = "high";
-        badge = "高風險・虛擬／推銷號段";
-        type = "風險評估：網路虛擬號碼或高頻推銷號段";
-        msg = "這類號段經常被用來假冒客服退款、百萬保障扣費或高息投資詐騙。千萬不要按照對方指示下載軟件或開啟螢幕共享！";
-      } else if (/^[268]\d{7}$/.test(num)) {
-        level = "warn";
-        badge = "本地號碼格式・仍須核實身份";
-        type = "風險評估：澳門本地 8 位數號碼";
-        msg = "這是標準的澳門本地號碼格式，但近期「猜猜我是誰」騙徒也會用本地太空卡犯案。若對方自稱親友換新號碼並急著借錢，務必先打原本號碼確認！";
-      }
-
+   async function runPhoneCheck(raw) {
       const session = ensureActiveSession("查號碼：" + raw);
-      session.riskLevel = level;
       session.messages.push({ role: "user", text: raw, tag: "號碼查詢" });
-      session.messages.push({ role: "ai", riskLevel: level, badge, scamType: type, text: msg });
-      saveSessions();
-      renderSidebar();
       renderCurrentSession();
-      speakText(msg);
+      saveSessions();
+
+      const sendBtn = document.getElementById("sendBtn");
+      sendBtn.disabled = true;
+      setStatus("正在核對官方白名單並聯網搜尋號碼歸屬...");
+
+      try {
+        const res = await fetch("/api/check_phone", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: raw })
+        });
+        if (!res.ok) throw new Error("伺服器異常");
+        const data = await res.json();
+
+        const level = data.risk_level || "warn";
+        const badge =
+          level === "safe"
+            ? "已核實・官方或正規商戶號碼"
+            : (level === "high" ? "高風險警告・可疑號碼" : "未登錄本地號碼・請核實身份");
+        const msg = data.reply_message || "請保持警覺，凡涉及轉帳或驗證碼請先問家人。";
+
+        session.riskLevel = level;
+        session.messages.push({
+          role: "ai",
+          riskLevel: level,
+          badge,
+          scamType: "歸屬與風險：" + (data.scam_type || "分析完成"),
+          text: msg
+        });
+        saveSessions();
+        renderSidebar();
+        renderCurrentSession();
+        setStatus("");
+        speakText(msg);
+      } catch (err) {
+        const fallback = "剛才聯網查核號碼稍慢。如果是帶 +853 或 00 開頭的號碼請直接拒接；普通本地號碼正常接聽即可，絕不轉帳或報出驗證碼！";
+        session.riskLevel = "warn";
+        session.messages.push({
+          role: "ai",
+          riskLevel: "warn",
+          badge: "連線稍慢・請保持警覺",
+          scamType: "暫時無法連線至雲端",
+          text: fallback
+        });
+        saveSessions();
+        renderSidebar();
+        renderCurrentSession();
+        setStatus("雲端查詢逾時，已顯示安全提醒", true);
+        speakText(fallback);
+      } finally {
+        sendBtn.disabled = false;
+      }
     }
 
     /* ================= 語音錄音（華為雲 SIS） ================= */
