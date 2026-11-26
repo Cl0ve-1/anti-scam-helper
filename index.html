@@ -5,174 +5,354 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="theme-color" content="#0F766E" />
+  <meta name="theme-color" content="#0D6E6E" />
   <title>安心防詐助手</title>
   <style>
     :root {
-      --bg: #F4F6F5;
-      --card: #FFFFFF;
-      --text: #1E293B;
-      --muted: #475569;
-      --primary: #0F766E;
-      --primary-dark: #115E59;
-      --primary-soft: #CCFBF1;
+      --bg: #F6F8F7;
+      --surface: #FFFFFF;
+      --surface-subtle: #F1F5F4;
+      --text: #0F172A;
+      --text-secondary: #475569;
+      --text-muted: #64748B;
+      --primary: #0D6E6E;
+      --primary-hover: #0A5757;
+      --primary-soft: #E6F4F3;
+      --primary-border: #B8E1DF;
+      --accent-blue: #1D4ED8;
+      --accent-blue-soft: #EFF6FF;
       --danger: #DC2626;
+      --danger-dark: #991B1B;
       --danger-soft: #FEF2F2;
-      --warn: #D97706;
+      --danger-border: #FECACA;
+      --warn: #B45309;
       --warn-soft: #FFFBEB;
+      --warn-border: #FDE68A;
       --safe: #15803D;
       --safe-soft: #F0FDF4;
+      --safe-border: #BBF7D0;
       --border: #E2E8F0;
-      --radius: 20px;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 8px 24px -4px rgba(15, 23, 42, 0.07), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --scale: 1;
     }
 
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body.large-text {
+      --scale: 1.15;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", "Microsoft JhengHei", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
-      padding-bottom: 48px;
+      padding-bottom: 56px;
+      -webkit-font-smoothing: antialiased;
     }
 
-    header {
-      background: var(--primary);
+    svg.ico {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    /* 頂部導覽列 */
+    .topbar {
+      background: linear-gradient(135deg, #0D6E6E 0%, #0A5256 100%);
       color: #FFFFFF;
-      padding: 18px 18px 26px;
-      border-bottom-left-radius: 24px;
-      border-bottom-right-radius: 24px;
-      box-shadow: 0 4px 14px rgba(15, 118, 110, 0.18);
+      padding: 20px 18px 34px;
+      position: relative;
     }
 
-    .header-top {
-      max-width: 640px;
+    .topbar-inner {
+      max-width: 660px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    .brand h1 { margin: 0; font-size: 23px; font-weight: 800; }
-    .brand p { margin: 3px 0 0; font-size: 14px; opacity: 0.92; }
-
-    .lang-switch {
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.22);
       display: flex;
-      background: rgba(255, 255, 255, 0.18);
-      padding: 4px;
-      border-radius: 999px;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(8px);
+    }
+
+    .brand-icon svg { width: 24px; height: 24px; }
+
+    .brand h1 {
+      margin: 0;
+      font-size: calc(21px * var(--scale));
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      font-size: calc(13.5px * var(--scale));
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .top-controls {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
       flex-shrink: 0;
     }
 
-    .lang-btn {
+    .pill-group {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 3px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .pill-btn {
       border: none;
       background: transparent;
-      color: #FFFFFF;
-      font-size: 14px;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 13px;
       font-weight: 700;
-      padding: 6px 12px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .pill-btn.active {
+      background: #FFFFFF;
+      color: var(--primary);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+    }
+
+    .font-toggle {
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.12);
+      color: #FFFFFF;
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 4px 10px;
       border-radius: 999px;
       cursor: pointer;
     }
 
-    .lang-btn.active {
-      background: #FFFFFF;
-      color: var(--primary-dark);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-    }
-
+    /* 主內容區 */
     main {
-      max-width: 640px;
-      margin: -16px auto 0;
+      max-width: 660px;
+      margin: -22px auto 0;
       padding: 0 16px;
+      position: relative;
+      z-index: 2;
     }
 
+    /* 分段式分頁欄 */
     .tabs {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      background: #FFFFFF;
-      padding: 8px;
+      gap: 6px;
+      background: var(--surface);
+      padding: 6px;
       border-radius: 18px;
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      box-shadow: var(--shadow-md);
       border: 1px solid var(--border);
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
 
     .tab-btn {
       border: none;
       background: transparent;
-      color: var(--muted);
-      font-size: 15px;
-      font-weight: 800;
-      padding: 12px 6px;
-      border-radius: 12px;
+      color: var(--text-secondary);
+      font-size: calc(14.5px * var(--scale));
+      font-weight: 700;
+      padding: 11px 6px;
+      border-radius: 13px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      transition: all 0.15s;
+      gap: 5px;
+      transition: all 0.2s ease;
     }
-
-    .tab-btn span.ico { font-size: 20px; }
 
     .tab-btn.active {
       background: var(--primary-soft);
-      color: var(--primary-dark);
+      color: var(--primary);
     }
 
-    .tab-panel { display: none; }
+    .tab-panel { display: none; animation: fadeIn 0.22s ease; }
     .tab-panel.active { display: block; }
 
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 通用卡片 */
     .card {
-      background: var(--card);
-      border-radius: var(--radius);
+      background: var(--surface);
+      border-radius: var(--radius-lg);
       padding: 20px;
-      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+      box-shadow: var(--shadow-md);
       border: 1px solid var(--border);
       margin-bottom: 18px;
     }
 
-    .voice-btn {
-      width: 100%;
-      border: none;
-      border-radius: 18px;
-      padding: 20px 16px;
+    /* 雙大快捷按鈕（語音 + 截圖） */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .hero-btn {
+      border: 1.5px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 18px 12px;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      transition: transform 0.14s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    .hero-btn:active { transform: scale(0.98); }
+    .hero-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+
+    .hero-btn-voice {
       background: var(--primary);
       color: #FFFFFF;
-      font-size: 21px;
-      font-weight: 800;
+      box-shadow: 0 6px 16px rgba(13, 110, 110, 0.22);
+    }
+
+    .hero-btn-voice.recording {
+      background: var(--danger);
+      animation: pulseRed 1.4s infinite;
+    }
+
+    .hero-btn-ocr {
+      background: var(--accent-blue-soft);
+      color: var(--accent-blue);
+      border-color: #BFDBFE;
+    }
+
+    .hero-btn-ocr:hover { background: #DBEAFE; }
+
+    .hero-icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 13px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      cursor: pointer;
-      box-shadow: 0 6px 16px rgba(15, 118, 110, 0.25);
     }
 
-    .voice-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .hero-btn-voice .hero-icon-wrap { background: rgba(255, 255, 255, 0.18); }
+    .hero-btn-ocr .hero-icon-wrap { background: #FFFFFF; box-shadow: var(--shadow-sm); }
 
-    .voice-btn.recording {
-      background: var(--danger);
-      animation: pulse 1.4s infinite;
+    .hero-btn-title {
+      font-size: calc(16.5px * var(--scale));
+      font-weight: 800;
+      line-height: 1.25;
     }
 
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55); }
-      70% { box-shadow: 0 0 0 16px rgba(220, 38, 38, 0); }
+    .hero-btn-sub {
+      font-size: calc(12.5px * var(--scale));
+      opacity: 0.86;
+    }
+
+    @keyframes pulseRed {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+      70% { box-shadow: 0 0 0 14px rgba(220, 38, 38, 0); }
       100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
     }
 
-    .hint-text {
+    /* 狀態提示條 */
+    .status-pill {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--surface-subtle);
+      color: var(--text-secondary);
+      border-radius: 12px;
+      padding: 9px 12px;
+      font-size: calc(13.5px * var(--scale));
+      font-weight: 600;
+      margin-bottom: 16px;
       text-align: center;
-      font-size: 14px;
-      color: var(--muted);
-      margin: 10px 0 16px;
     }
 
+    /* 截圖預覽區塊 */
+    .img-preview-wrap {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+
+    .img-preview-wrap img {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .img-preview-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .img-preview-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .img-preview-sub {
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+
+    /* 輸入區 */
     .input-header {
       display: flex;
       justify-content: space-between;
@@ -180,116 +360,191 @@
       margin-bottom: 8px;
     }
 
-    .input-header label { font-size: 16px; font-weight: 700; }
+    .input-header label {
+      font-size: calc(15px * var(--scale));
+      font-weight: 700;
+      color: var(--text);
+    }
 
-    .clear-btn {
+    .ghost-btn {
       border: 1px solid var(--border);
-      background: #F8FAFC;
-      color: var(--muted);
-      font-size: 14px;
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 13px;
       font-weight: 600;
-      padding: 4px 12px;
+      padding: 5px 12px;
       border-radius: 999px;
       cursor: pointer;
     }
 
     textarea, .phone-input {
       width: 100%;
-      padding: 14px;
-      font-size: 18px;
-      border: 2px solid var(--border);
-      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: calc(17px * var(--scale));
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
       font-family: inherit;
       color: var(--text);
-      background: #FAFAFA;
+      background: #FAFCFB;
+      transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
     }
 
-    textarea { min-height: 112px; resize: vertical; line-height: 1.5; }
-    .phone-input { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+    textarea { min-height: 112px; resize: vertical; line-height: 1.55; }
+    .phone-input { font-size: calc(21px * var(--scale)); font-weight: 700; letter-spacing: 0.8px; }
 
     textarea:focus, .phone-input:focus {
       outline: none;
       border-color: var(--primary);
       background: #FFFFFF;
+      box-shadow: 0 0 0 3px rgba(13, 110, 110, 0.12);
     }
 
-    .submit-btn {
+    .primary-cta {
       width: 100%;
       margin-top: 14px;
       border: none;
-      border-radius: 16px;
+      border-radius: var(--radius-md);
       padding: 16px;
-      background: #1E293B;
+      background: var(--text);
       color: #FFFFFF;
-      font-size: 20px;
+      font-size: calc(18px * var(--scale));
       font-weight: 800;
       cursor: pointer;
-    }
-
-    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .monitor-box {
-      background: #F8FAFC;
-      border: 2px dashed var(--border);
-      border-radius: 14px;
-      padding: 14px;
-      min-height: 110px;
-      max-height: 200px;
-      overflow-y: auto;
-      font-size: 18px;
-      color: var(--text);
-      margin-top: 12px;
-    }
-
-    .monitor-status {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--muted);
-      margin-top: 10px;
+      justify-content: center;
+      gap: 8px;
+      transition: opacity 0.15s, transform 0.12s;
     }
 
-    .tip-banner {
+    .primary-cta:active { transform: scale(0.99); }
+    .primary-cta:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* 通話監聽區 */
+    .monitor-btn-full {
+      width: 100%;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 18px 16px;
+      background: var(--primary);
+      color: #FFFFFF;
+      font-size: calc(19px * var(--scale));
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(13, 110, 110, 0.22);
+    }
+
+    .monitor-btn-full.recording {
+      background: var(--danger);
+      animation: pulseRed 1.4s infinite;
+    }
+
+    .tip-callout {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
       background: var(--warn-soft);
-      border: 1px solid #FDE68A;
+      border: 1px solid var(--warn-border);
       color: #92400E;
       border-radius: 14px;
       padding: 12px 14px;
-      font-size: 15px;
-      margin-bottom: 14px;
+      font-size: calc(14.5px * var(--scale));
+      margin-bottom: 16px;
     }
 
-    .result-card { display: none; border-width: 2px; }
-    .result-card.high { background: var(--danger-soft); border-color: var(--danger); }
-    .result-card.warn { background: var(--warn-soft); border-color: var(--warn); }
-    .result-card.safe { background: var(--safe-soft); border-color: var(--safe); }
+    .monitor-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .live-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #94A3B8;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .live-dot.active {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.2);
+    }
+
+    .monitor-box {
+      background: #F8FAFC;
+      border: 1.5px dashed #CBD5E1;
+      border-radius: 14px;
+      padding: 14px;
+      min-height: 116px;
+      max-height: 210px;
+      overflow-y: auto;
+      font-size: calc(16.5px * var(--scale));
+      color: var(--text);
+      margin-top: 10px;
+    }
+
+    /* 檢測結果卡片 */
+    .result-card {
+      display: none;
+      border-width: 1.5px;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .result-card.high { background: var(--danger-soft); border-color: var(--danger-border); }
+    .result-card.warn { background: var(--warn-soft); border-color: var(--warn-border); }
+    .result-card.safe { background: var(--safe-soft); border-color: var(--safe-border); }
+
+    .result-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
 
     .result-badge {
-      display: inline-block;
-      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: calc(15px * var(--scale));
       font-weight: 800;
       padding: 6px 14px;
       border-radius: 999px;
       color: #FFFFFF;
-      margin-bottom: 10px;
     }
 
     .high .result-badge { background: var(--danger); }
     .warn .result-badge { background: var(--warn); }
     .safe .result-badge { background: var(--safe); }
 
-    .result-type { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+    .result-type {
+      font-size: calc(15px * var(--scale));
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
 
     .result-msg {
-      font-size: 19px;
+      font-size: calc(18px * var(--scale));
       font-weight: 600;
       background: #FFFFFF;
-      padding: 15px;
+      padding: 16px;
       border-radius: 14px;
-      border: 1px solid rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(15, 23, 42, 0.06);
       margin-bottom: 14px;
+      line-height: 1.65;
     }
 
     .result-actions {
@@ -302,22 +557,26 @@
       border: none;
       border-radius: 12px;
       padding: 13px 10px;
-      font-size: 16px;
+      font-size: calc(15px * var(--scale));
       font-weight: 700;
       cursor: pointer;
-      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       text-decoration: none;
     }
 
     .btn-speak { background: #FFFFFF; color: var(--text); border: 1.5px solid var(--border); }
     .btn-call { background: var(--danger); color: #FFFFFF; }
 
+    /* 全螢幕高危詐騙警報覆蓋層 */
     #dangerOverlay {
       display: none;
       position: fixed;
       inset: 0;
       z-index: 9999;
-      background: #DC2626;
+      background: var(--danger);
       color: #FFFFFF;
       padding: 28px 20px;
       flex-direction: column;
@@ -332,23 +591,24 @@
       to { background: #991B1B; }
     }
 
-    #dangerOverlay h2 { font-size: 32px; margin: 10px 0; }
+    #dangerOverlay h2 { font-size: 30px; margin: 14px 0 8px; font-weight: 900; }
     #dangerReason {
-      font-size: 21px;
+      font-size: 20px;
       font-weight: 700;
-      background: rgba(0, 0, 0, 0.25);
-      padding: 16px 20px;
-      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.24);
+      padding: 18px 20px;
+      border-radius: 18px;
       margin: 14px 0 24px;
       max-width: 500px;
+      line-height: 1.55;
     }
 
     .overlay-btn {
       width: 100%;
       max-width: 340px;
-      padding: 18px;
+      padding: 17px;
       border-radius: 16px;
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 800;
       border: none;
       cursor: pointer;
@@ -357,18 +617,38 @@
       display: block;
     }
 
-    .overlay-close { background: #FFFFFF; color: #991B1B; }
-    .overlay-call { background: #1E293B; color: #FFFFFF; }
+    .overlay-close { background: #FFFFFF; color: var(--danger-dark); }
+    .overlay-call { background: var(--text); color: #FFFFFF; }
 
-    .section-title { font-size: 20px; font-weight: 800; margin: 24px 0 12px 4px; }
+    /* 常見詐騙手法參考區 */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 26px 4px 12px;
+    }
+
+    .section-title {
+      font-size: calc(18.5px * var(--scale));
+      font-weight: 800;
+      margin: 0;
+      color: var(--text);
+    }
+
+    .section-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
     .scam-list { display: grid; gap: 12px; }
 
     .scam-card {
-      background: var(--card);
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 18px;
       padding: 16px 18px;
-      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+      box-shadow: var(--shadow-sm);
     }
 
     .scam-card-top {
@@ -379,77 +659,165 @@
       margin-bottom: 8px;
     }
 
-    .scam-card h3 { margin: 0; font-size: 18px; color: var(--danger); }
+    .scam-tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--danger);
+      background: var(--danger-soft);
+      padding: 3px 9px;
+      border-radius: 999px;
+      margin-bottom: 4px;
+    }
+
+    .scam-card h3 {
+      margin: 0;
+      font-size: calc(17px * var(--scale));
+      color: var(--text);
+    }
 
     .mini-speak-btn {
-      border: 1px solid var(--primary);
+      border: 1px solid var(--primary-border);
       background: var(--primary-soft);
-      color: var(--primary-dark);
-      font-size: 14px;
+      color: var(--primary);
+      font-size: 13.5px;
       font-weight: 700;
-      padding: 6px 12px;
+      padding: 7px 12px;
       border-radius: 999px;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       flex-shrink: 0;
     }
 
-    .scam-card p { margin: 4px 0; font-size: 16px; }
-    .scam-tip { color: var(--primary-dark) !important; font-weight: 700; margin-top: 6px !important; }
-    .footer-note { text-align: center; font-size: 14px; color: var(--muted); margin-top: 22px; }
+    .scam-card p {
+      margin: 6px 0;
+      font-size: calc(15px * var(--scale));
+      color: var(--text-secondary);
+    }
+
+    .scam-tip {
+      background: var(--primary-soft);
+      color: var(--primary) !important;
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: 10px;
+      margin-top: 10px !important;
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: calc(13.5px * var(--scale));
+      color: var(--text-muted);
+      margin-top: 26px;
+      padding: 0 12px;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div class="header-top">
+  <header class="topbar">
+    <div class="topbar-inner">
       <div class="brand">
-        <h1>🛡️ 安心防詐助手</h1>
-        <p>可疑電話、短訊、號碼，一鍵幫你把關</p>
+        <div class="brand-icon" aria-hidden="true">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+        <div>
+          <h1>安心防詐助手</h1>
+          <p>語音・截圖・通話・號碼，一鍵幫你把關</p>
+        </div>
       </div>
-      <div class="lang-switch" role="group" aria-label="語言選擇">
-        <button id="btnHK" class="lang-btn active" onclick="setLang('zh-HK')">廣東話</button>
-        <button id="btnCN" class="lang-btn" onclick="setLang('zh-CN')">普通話</button>
+
+      <div class="top-controls">
+        <div class="pill-group" role="group" aria-label="語言選擇">
+          <button id="btnHK" class="pill-btn active" onclick="setLang('zh-HK')">廣東話</button>
+          <button id="btnCN" class="pill-btn" onclick="setLang('zh-CN')">普通話</button>
+        </div>
+        <button id="fontToggleBtn" class="font-toggle" onclick="toggleFontSize()">字體：標準</button>
       </div>
     </div>
   </header>
 
   <main>
-    <nav class="tabs">
+    <!-- 導覽分頁 -->
+    <nav class="tabs" aria-label="功能切換">
       <button id="tab-check" class="tab-btn active" onclick="switchTab('check')">
-        <span class="ico">🔍</span>短訊／語音
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span>智能查驗</span>
       </button>
       <button id="tab-call" class="tab-btn" onclick="switchTab('call')">
-        <span class="ico">📞</span>通話監聽
+        <svg class="ico" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <span>通話監聽</span>
       </button>
       <button id="tab-phone" class="tab-btn" onclick="switchTab('phone')">
-        <span class="ico">☎️</span>查可疑號碼
+        <svg class="ico" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+        <span>號碼快查</span>
       </button>
     </nav>
 
-    <!-- 分頁 1：語音／短訊檢查 -->
+    <!-- 分頁 1：語音 + 截圖 OCR + 文字檢查 -->
     <section id="panel-check" class="tab-panel active">
       <div class="card">
-        <button id="voiceBtn" class="voice-btn" onclick="toggleVoice()">
-          <span id="voiceIcon">🎤</span>
-          <span id="voiceText">按一下開始講話</span>
-        </button>
-        <div id="voiceHint" class="hint-text">講完再按一次停止，系統會用華為雲廣東話引擎轉成文字</div>
+        <div class="quick-actions">
+          <button id="voiceBtn" class="hero-btn hero-btn-voice" onclick="toggleVoice()">
+            <div class="hero-icon-wrap" id="voiceIconWrap">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            </div>
+            <span id="voiceText" class="hero-btn-title">按一下講話</span>
+            <span class="hero-btn-sub">支援廣東話轉字</span>
+          </button>
+
+          <button id="ocrBtn" class="hero-btn hero-btn-ocr" onclick="triggerImagePick()">
+            <div class="hero-icon-wrap">
+              <svg class="ico" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            </div>
+            <span id="ocrText" class="hero-btn-title">上傳截圖檢查</span>
+            <span class="hero-btn-sub">自動讀出圖中文字</span>
+          </button>
+          <input id="imageFileInput" type="file" accept="image/*" style="display: none;" onchange="handleImageUpload(event)" />
+        </div>
+
+        <div id="voiceHint" class="status-pill">
+          可以用語音講出經過、上傳可疑短訊截圖，或直接貼上文字
+        </div>
+
+        <!-- 截圖預覽區 -->
+        <div id="imgPreviewWrap" class="img-preview-wrap">
+          <img id="imgPreview" alt="截圖預覽" />
+          <div class="img-preview-info">
+            <div class="img-preview-title" id="imgPreviewTitle">已讀取截圖文字</div>
+            <div class="img-preview-sub">系統已自動擷取圖片內容並填入下方</div>
+          </div>
+          <button class="ghost-btn" onclick="clearImagePreview()">移除</button>
+        </div>
 
         <div class="input-header">
-          <label for="msgInput">或直接貼上可疑短訊／網址：</label>
-          <button class="clear-btn" onclick="clearInput()">清空</button>
+          <label for="msgInput">待檢查的內容（可修改或貼上短訊）：</label>
+          <button class="ghost-btn" onclick="clearInput()">清空</button>
         </div>
-        <textarea id="msgInput" placeholder="例如：有人話我戶口被凍結，或者收到一條叫我點連結解除封禁嘅短訊..."></textarea>
+        <textarea id="msgInput" placeholder="例如：有人話我戶口被凍結，或者收到一條叫我撳連結解除封禁嘅短訊..."></textarea>
 
-        <button id="submitBtn" class="submit-btn" onclick="checkScam()">🔍 立即幫我檢查</button>
+        <button id="submitBtn" class="primary-cta" onclick="checkScam()">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>立即幫我檢查風險</span>
+        </button>
       </div>
 
       <div id="resultCard" class="card result-card">
-        <div id="resultBadge" class="result-badge">高風險警告</div>
+        <div class="result-head">
+          <div id="resultBadge" class="result-badge">高風險警告</div>
+        </div>
         <div id="resultType" class="result-type"></div>
         <div id="resultMsg" class="result-msg"></div>
         <div class="result-actions">
-          <button class="action-btn btn-speak" onclick="replaySpeech()">🔊 再聽一次</button>
-          <a class="action-btn btn-call" href="tel:88007777">📞 防詐熱線 88007777</a>
+          <button class="action-btn btn-speak" onclick="replaySpeech()">
+            <svg class="ico" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            再聽一次
+          </button>
+          <a class="action-btn btn-call" href="tel:88007777">
+            <svg class="ico" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            防詐熱線 88007777
+          </a>
         </div>
       </div>
     </section>
@@ -457,22 +825,25 @@
     <!-- 分頁 2：通話擴音即時監聽 -->
     <section id="panel-call" class="tab-panel">
       <div class="card">
-        <div class="tip-banner">
-          💡 <strong>使用方法：</strong>接到奇怪電話時，先按開手機<strong>擴音</strong>，再點下方按鈕。系統每幾秒會用華為雲辨識廣東話，聽到「安全帳戶、過數、驗證碼」等騙子詞彙會<strong>立刻響警報並震動提醒掛線</strong>！
+        <div class="tip-callout">
+          <svg class="ico" viewBox="0 0 24 24" style="margin-top:2px;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <div>
+            <strong>使用方法：</strong>接到奇怪電話時，先打開手機<strong>擴音</strong>再點下方按鈕。系統每 4.5 秒透過華為雲辨識廣東話，聽到「安全帳戶、過數、驗證碼」會<strong>立刻響警報並震動提醒掛線</strong>。
+          </div>
         </div>
 
-        <button id="monitorBtn" class="voice-btn" onclick="toggleCallMonitor()">
-          <span id="monitorIcon">🛡️</span>
+        <button id="monitorBtn" class="monitor-btn-full" onclick="toggleCallMonitor()">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span id="monitorText">開啟通話即時監聽</span>
         </button>
 
-        <div class="monitor-status">
-          <span id="monitorState">狀態：待機中</span>
-          <button class="clear-btn" onclick="clearMonitor()">清除紀錄</button>
+        <div class="monitor-meta">
+          <span><span id="liveDot" class="live-dot"></span><span id="monitorState">待機中</span></span>
+          <button class="ghost-btn" onclick="clearMonitor()">清除紀錄</button>
         </div>
 
         <div id="monitorBox" class="monitor-box">
-          等待監聽通話內容...（系統將透過華為雲粵語引擎即時轉錄並進行防詐攔截）
+          等待監聽通話內容...（系統將即時把對方講的話轉成文字並進行防詐攔截）
         </div>
       </div>
     </section>
@@ -482,60 +853,99 @@
       <div class="card">
         <div class="input-header">
           <label for="phoneInput">輸入可疑來電號碼：</label>
-          <button class="clear-btn" onclick="clearPhone()">清空</button>
+          <button class="ghost-btn" onclick="clearPhone()">清空</button>
         </div>
         <input id="phoneInput" class="phone-input" type="tel" placeholder="例如：+853 61234567 或 00852..." />
-        <button class="submit-btn" onclick="checkPhoneNumber()">☎️ 立即檢查號碼風險</button>
+        <button class="primary-cta" onclick="checkPhoneNumber()">
+          <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span>立即檢查號碼風險</span>
+        </button>
       </div>
 
       <div id="phoneResultCard" class="card result-card">
-        <div id="phoneBadge" class="result-badge"></div>
+        <div class="result-head">
+          <div id="phoneBadge" class="result-badge"></div>
+        </div>
         <div id="phoneType" class="result-type"></div>
         <div id="phoneMsg" class="result-msg"></div>
         <div class="result-actions">
-          <button class="action-btn btn-speak" onclick="replayPhoneSpeech()">🔊 語音再聽一次</button>
-          <a class="action-btn btn-call" href="tel:88007777">📞 防詐熱線 88007777</a>
+          <button class="action-btn btn-speak" onclick="replayPhoneSpeech()">
+            <svg class="ico" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            語音再聽一次
+          </button>
+          <a class="action-btn btn-call" href="tel:88007777">
+            <svg class="ico" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            防詐熱線 88007777
+          </a>
         </div>
       </div>
     </section>
 
     <!-- 常見詐騙手法參考 -->
-    <h2 class="section-title">📖 常見詐騙手法參考（點一下可聽語音）</h2>
+    <div class="section-header">
+      <h2 class="section-title">常見詐騙手法參考</h2>
+      <span class="section-sub">點擊右側可聽語音</span>
+    </div>
+
     <div class="scam-list">
       <article class="scam-card">
         <div class="scam-card-top">
-          <h3>1. 猜猜我是誰（假冒親友）</h3>
-          <button class="mini-speak-btn" onclick="speakText('第一種，猜猜我是誰。騙子會自稱係你個仔、孫或者表弟，話自己換咗電話號碼，跟住話出事、住院或者俾人拉咗，急住借錢交按金。記住，一定要掛線，打返原本熟悉嘅號碼向家人確認！')">🔊 語音講解</button>
+          <div>
+            <span class="scam-tag">高發手法 01</span>
+            <h3>猜猜我是誰（假冒親友）</h3>
+          </div>
+          <button class="mini-speak-btn" onclick="speakText('第一種，猜猜我是誰。騙子會自稱係你個仔、孫或者表弟，話自己換咗電話號碼，跟住話出事、住院或者俾人拉咗，急住借錢交按金。記住，一定要掛線，打返原本熟悉嘅號碼向家人確認！')">
+            <svg class="ico" style="width:16px;height:16px;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            聽講解
+          </button>
         </div>
         <p><strong>常見話術：</strong>「我換咗新號碼呀，聽唔出我把聲咩？我出事急住要五千蚊交住院按金。」</p>
-        <p class="scam-tip">✅ 拆穿方法：立即掛線，打原本的電話號碼找家人核實，絕不轉帳。</p>
+        <p class="scam-tip">拆穿方法：立即掛線，打原本的電話號碼找家人核實，絕不轉帳。</p>
       </article>
 
       <article class="scam-card">
         <div class="scam-card-top">
-          <h3>2. 釣魚封禁短訊（假網址）</h3>
-          <button class="mini-speak-btn" onclick="speakText('第二種，釣魚封禁短訊。騙子會扮成 WhatsApp、銀行或者快遞公司，話你帳戶有風險、就快永久封禁或者積分過期，叫你撳入去一條古怪英文網址解除。記住，千萬唔好撳陌生連結，直接刪除短訊！')">🔊 語音講解</button>
+          <div>
+            <span class="scam-tag">高發手法 02</span>
+            <h3>釣魚封禁短訊（假網址）</h3>
+          </div>
+          <button class="mini-speak-btn" onclick="speakText('第二種，釣魚封禁短訊。騙子會扮成 WhatsApp、銀行或者快遞公司，話你帳戶有風險、就快永久封禁或者積分過期，叫你撳入去一條古怪英文網址解除。記住，千萬唔好撳陌生連結，直接刪除短訊！')">
+            <svg class="ico" style="width:16px;height:16px;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            聽講解
+          </button>
         </div>
         <p><strong>常見話術：</strong>「您的帳戶存在風險將於今晚封禁，請點擊連結解除異常。」</p>
-        <p class="scam-tip">✅ 拆穿方法：凡是催促點擊陌生網址的短訊，一律不要點、直接刪掉。</p>
+        <p class="scam-tip">拆穿方法：凡是催促點擊陌生網址的短訊，一律不要點、直接刪掉。</p>
       </article>
 
       <article class="scam-card">
         <div class="scam-card-top">
-          <h3>3. 假冒公檢法／海關</h3>
-          <button class="mini-speak-btn" onclick="speakText('第三種，假冒公檢法或者海關。騙子會話你涉及洗黑錢、包裹違禁，要你配合調查，甚至叫你將錢轉入安全帳戶或者唔好同屋企人講。記住，真正警察絕對唔會叫你轉帳或者開視像做筆錄！')">🔊 語音講解</button>
+          <div>
+            <span class="scam-tag">高發手法 03</span>
+            <h3>假冒公檢法／海關</h3>
+          </div>
+          <button class="mini-speak-btn" onclick="speakText('第三種，假冒公檢法或者海關。騙子會話你涉及洗黑錢、包裹違禁，要你配合調查，甚至叫你將錢轉入安全帳戶或者唔好同屋企人講。記住，真正警察絕對唔會叫你轉帳或者開視像做筆錄！')">
+            <svg class="ico" style="width:16px;height:16px;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            聽講解
+          </button>
         </div>
         <p><strong>常見話術：</strong>「你名下銀行卡涉及洗黑錢，為證明清白請將存款轉入安全帳戶，切勿告知家人。」</p>
-        <p class="scam-tip">✅ 拆穿方法：警察絕不會要求轉帳、交驗證碼或保密，直接掛斷。</p>
+        <p class="scam-tip">拆穿方法：警察絕不會要求轉帳、交驗證碼或保密，直接掛斷。</p>
       </article>
 
       <article class="scam-card">
         <div class="scam-card-top">
-          <h3>4. 假客服退款／高息投資</h3>
-          <button class="mini-speak-btn" onclick="speakText('第四種，假客服或者高息投資。對方話幫你取消保險扣費、退還款項，或者拉你入群話保證賺大錢，跟住叫你下載陌生軟件同開啟螢幕共享。記住，千萬唔好開螢幕共享，亦唔好報出短訊驗證碼！')">🔊 語音講解</button>
+          <div>
+            <span class="scam-tag">高發手法 04</span>
+            <h3>假客服退款／高息投資</h3>
+          </div>
+          <button class="mini-speak-btn" onclick="speakText('第四種，假客服或者高息投資。對方話幫你取消保險扣費、退還款項，或者拉你入群話保證賺大錢，跟住叫你下載陌生軟件同開啟螢幕共享。記住，千萬唔好開螢幕共享，亦唔好報出短訊驗證碼！')">
+            <svg class="ico" style="width:16px;height:16px;" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            聽講解
+          </button>
         </div>
         <p><strong>常見話術：</strong>「你的百萬保障即將自動扣費，請下載軟件開啟螢幕共享，我教你免費取消。」</p>
-        <p class="scam-tip">✅ 拆穿方法：絕不開啟螢幕共享，絕不透露銀行密碼與短訊驗證碼。</p>
+        <p class="scam-tip">拆穿方法：絕不開啟螢幕共享，絕不透露銀行密碼與短訊驗證碼。</p>
       </article>
     </div>
 
@@ -546,11 +956,11 @@
 
   <!-- 全螢幕高危警報覆蓋層 -->
   <div id="dangerOverlay">
-    <div style="font-size: 64px;">🚨</div>
+    <svg class="ico" style="width:68px;height:68px;" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
     <h2>高度疑似詐騙電話！</h2>
     <div id="dangerReason">偵測到高風險詐騙話術，請立刻掛斷電話，不要轉帳或提供驗證碼！</div>
-    <button class="overlay-btn overlay-close" onclick="closeDangerOverlay()">✅ 我已掛斷，關閉警報</button>
-    <a class="overlay-btn overlay-call" href="tel:88007777">📞 致電防詐熱線 88007777</a>
+    <button class="overlay-btn overlay-close" onclick="closeDangerOverlay()">我已掛斷，關閉警報</button>
+    <a class="overlay-btn overlay-call" href="tel:88007777">致電防詐熱線 88007777</a>
   </div>
 
   <script>
@@ -564,7 +974,7 @@
     let micStream = null;
     let isRecording = false;
 
-    // 分頁 2 通話監聽變數（分段錄音送華為雲 SIS）
+    // 分頁 2 通話監聽變數
     let monitorStream = null;
     let monitorRecorder = null;
     let monitorTimer = null;
@@ -575,7 +985,6 @@
     let alertTriggered = false;
     let audioCtx = null;
 
-    // 高危詐騙關鍵詞庫（含粵語口語）
     const DANGER_KEYWORDS = [
       "安全帳戶", "安全账户", "洗黑錢", "洗黑钱", "驗證碼", "验证码",
       "螢幕共享", "屏幕共享", "遠程控制", "远程控制", "百萬保障", "百万保障",
@@ -584,6 +993,11 @@
       "住院按金", "保釋金", "保释金", "清查資金", "清查资金", "資產公證", "资产公证",
       "俾人拉咗", "過數", "轉帳", "转账"
     ];
+
+    function toggleFontSize() {
+      const isLarge = document.body.classList.toggle("large-text");
+      document.getElementById("fontToggleBtn").textContent = isLarge ? "字體：特大" : "字體：標準";
+    }
 
     function getSupportedMimeType() {
       if (typeof MediaRecorder === "undefined") return "";
@@ -603,7 +1017,6 @@
     function switchTab(tab) {
       if (isRecording) stopVoice();
       if (isMonitoring) stopCallMonitor();
-
       ["check", "call", "phone"].forEach(t => {
         document.getElementById("tab-" + t).classList.toggle("active", t === tab);
         document.getElementById("panel-" + t).classList.toggle("active", t === tab);
@@ -619,11 +1032,12 @@
       window.speechSynthesis.speak(utter);
     }
 
-    /* ================= 分頁 1：語音／短訊檢查（華為雲 SIS） ================= */
+    /* ================= 分頁 1：語音錄音（華為雲 SIS） ================= */
     const voiceBtn = document.getElementById("voiceBtn");
-    const voiceIcon = document.getElementById("voiceIcon");
     const voiceText = document.getElementById("voiceText");
     const voiceHint = document.getElementById("voiceHint");
+    const ocrBtn = document.getElementById("ocrBtn");
+    const ocrText = document.getElementById("ocrText");
     const msgInput = document.getElementById("msgInput");
     const submitBtn = document.getElementById("submitBtn");
     const resultCard = document.getElementById("resultCard");
@@ -631,6 +1045,7 @@
     function clearInput() {
       msgInput.value = "";
       resultCard.style.display = "none";
+      clearImagePreview();
       window.speechSynthesis.cancel();
     }
 
@@ -640,21 +1055,16 @@
       isRecording = false;
       voiceBtn.disabled = false;
       voiceBtn.classList.remove("recording");
-      voiceIcon.textContent = "🎤";
-      voiceText.textContent = "按一下開始講話";
+      voiceText.textContent = "按一下講話";
     }
 
     function toggleVoice() {
-      if (isRecording) {
-        stopVoice();
-      } else {
-        startVoice();
-      }
+      isRecording ? stopVoice() : startVoice();
     }
 
     async function startVoice() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("此瀏覽器不支援麥克風錄音，請確認使用 HTTPS 網址並改用 Chrome 或 Safari。");
+        alert("此瀏覽器不支援麥克風錄音，請改用 Chrome 或 Safari。");
         return;
       }
       window.speechSynthesis.cancel();
@@ -681,7 +1091,6 @@
             resetVoiceUI();
             return;
           }
-
           const finalMime = mediaRecorder.mimeType || mimeType || "audio/webm";
           const ext = finalMime.includes("mp4") ? "mp4" : "webm";
           const blob = new Blob(audioChunks, { type: finalMime });
@@ -691,11 +1100,10 @@
         mediaRecorder.start();
         isRecording = true;
         voiceBtn.classList.add("recording");
-        voiceIcon.textContent = "⏹️";
-        voiceText.textContent = "正在錄音... 講完按此停止";
-        voiceHint.textContent = "講完按上面紅色按鈕，系統會轉成廣東話文字";
+        voiceText.textContent = "講完按此停止";
+        voiceHint.textContent = "正在錄音中... 講完再按一次紅色按鈕";
       } catch (err) {
-        voiceHint.textContent = "無法開啟麥克風：" + (err.message || "請允許瀏覽器麥克風權限");
+        voiceHint.textContent = "無法開啟麥克風：" + (err.message || "請允許麥克風權限");
         resetVoiceUI();
       }
     }
@@ -706,38 +1114,29 @@
       }
       isRecording = false;
       voiceBtn.classList.remove("recording");
-      voiceIcon.textContent = "⏳";
     }
 
     async function uploadAudioToSIS(blob, ext) {
       voiceBtn.disabled = true;
-      voiceText.textContent = "正在辨識廣東話...";
-      voiceHint.textContent = "請稍候 1–2 秒";
+      voiceText.textContent = "辨識中...";
+      voiceHint.textContent = "正在用華為雲辨識廣東話，請稍候 1–2 秒...";
 
       try {
         const formData = new FormData();
         formData.append("file", blob, `voice.${ext}`);
         formData.append("lang", currentLang);
 
-        const res = await fetch("/api/transcribe", {
-          method: "POST",
-          body: formData
-        });
-
+        const res = await fetch("/api/transcribe", { method: "POST", body: formData });
         if (!res.ok) {
           let errMsg = "伺服器錯誤 (" + res.status + ")";
-          try {
-            const errData = await res.json();
-            if (errData.detail) errMsg = errData.detail;
-          } catch (e) {}
+          try { const d = await res.json(); if (d.detail) errMsg = d.detail; } catch (e) {}
           throw new Error(errMsg);
         }
-
         const data = await res.json();
         if (data.text) {
           const prev = msgInput.value.trim();
           msgInput.value = prev ? (prev + "，" + data.text) : data.text;
-          voiceHint.textContent = "辨識完成！確認文字無誤後按下方檢查";
+          voiceHint.textContent = "辨識完成！確認文字後點下方按鈕開始檢查";
         } else {
           voiceHint.textContent = "剛才好像沒聽清楚，請靠近麥克風再講一次";
         }
@@ -748,13 +1147,97 @@
       }
     }
 
+    /* ================= 分頁 1：截圖文字擷取（華為雲 OCR） ================= */
+    function triggerImagePick() {
+      document.getElementById("imageFileInput").click();
+    }
+
+    function clearImagePreview() {
+      document.getElementById("imgPreviewWrap").style.display = "none";
+      document.getElementById("imageFileInput").value = "";
+    }
+
+    function compressImage(file, maxWidth = 1600, quality = 0.85) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let { width, height } = img;
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(
+              (blob) => (blob ? resolve({ blob, dataUrl: e.target.result }) : reject(new Error("圖片壓縮失敗"))),
+              "image/jpeg",
+              quality
+            );
+          };
+          img.onerror = () => reject(new Error("無法讀取圖片"));
+          img.src = e.target.result;
+        };
+        reader.onerror = () => reject(new Error("無法載入檔案"));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleImageUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      ocrBtn.disabled = true;
+      ocrText.textContent = "讀取文字中...";
+      voiceHint.textContent = "正在擷取圖片中的文字，請稍候...";
+
+      try {
+        const { blob, dataUrl } = await compressImage(file);
+        document.getElementById("imgPreview").src = dataUrl;
+        document.getElementById("imgPreviewWrap").style.display = "flex";
+        document.getElementById("imgPreviewTitle").textContent = "正在辨識圖片文字...";
+
+        const formData = new FormData();
+        formData.append("file", blob, "screenshot.jpg");
+
+        const res = await fetch("/api/ocr", { method: "POST", body: formData });
+        if (!res.ok) {
+          let errMsg = "伺服器錯誤 (" + res.status + ")";
+          try { const d = await res.json(); if (d.detail) errMsg = d.detail; } catch (e) {}
+          throw new Error(errMsg);
+        }
+
+        const data = await res.json();
+        if (data.text && data.text.trim()) {
+          msgInput.value = data.text.trim();
+          document.getElementById("imgPreviewTitle").textContent = "已成功擷取截圖文字";
+          voiceHint.textContent = "已讀出圖片文字，正在自動為你檢查防詐風險...";
+          await checkScam();
+        } else {
+          document.getElementById("imgPreviewTitle").textContent = "未偵測到清晰文字";
+          voiceHint.textContent = "這張圖片好像沒有文字，請換一張清晰的短訊截圖";
+        }
+      } catch (err) {
+        document.getElementById("imgPreviewTitle").textContent = "圖片辨識失敗";
+        voiceHint.textContent = "圖片讀取失敗：" + err.message;
+      } finally {
+        ocrBtn.disabled = false;
+        ocrText.textContent = "上傳截圖檢查";
+        event.target.value = "";
+      }
+    }
+
     async function checkScam() {
       if (isRecording) stopVoice();
       const text = msgInput.value.trim();
-      if (!text) { alert("請先用語音講出經過，或貼上可疑短訊內容！"); return; }
+      if (!text) { alert("請先用語音講話、上傳截圖，或貼上可疑短訊內容！"); return; }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = "⏳ 正在幫你仔細檢查...";
+      submitBtn.innerHTML = "<span>正在仔細分析風險...</span>";
       resultCard.style.display = "none";
 
       try {
@@ -768,17 +1251,18 @@
 
         const isHigh = data.risk_level === "high";
         resultCard.className = "card result-card " + (isHigh ? "high" : "safe");
-        document.getElementById("resultBadge").textContent = isHigh ? "🚨 高度疑似詐騙！請小心" : "✅ 暫無明顯詐騙特徵";
+        document.getElementById("resultBadge").textContent = isHigh ? "高風險警告・疑似詐騙" : "暫無明顯詐騙特徵";
         document.getElementById("resultType").textContent = "類型判斷：" + (data.scam_type || "分析完成");
         document.getElementById("resultMsg").textContent = data.reply_message || "請保持冷靜，切勿輕易轉帳。";
         resultCard.style.display = "block";
+        voiceHint.textContent = "檢查完成，可點擊下方「再聽一次」收聽語音建議";
 
         lastReplyText = data.reply_message;
         speakText(lastReplyText);
         resultCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
       } catch (err) {
         resultCard.className = "card result-card high";
-        document.getElementById("resultBadge").textContent = "⚠️ 連線稍慢，請提高警覺";
+        document.getElementById("resultBadge").textContent = "連線稍慢・請提高警覺";
         document.getElementById("resultType").textContent = "狀態：暫時無法連線至雲端";
         document.getElementById("resultMsg").textContent = "剛才網路有點慢。只要涉及借錢、轉帳、點陌生連結或要驗證碼，請先不要理會，直接打電話給家人確認！";
         resultCard.style.display = "block";
@@ -786,15 +1270,15 @@
         speakText(lastReplyText);
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = "🔍 立即幫我檢查";
+        submitBtn.innerHTML = `<svg class="ico" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg><span>立即幫我檢查風險</span>`;
       }
     }
 
-    /* ================= 分頁 2：通話擴音即時監聽（華為雲 SIS 分段辨識） ================= */
+    /* ================= 分頁 2：通話擴音即時監聽 ================= */
     const monitorBtn = document.getElementById("monitorBtn");
-    const monitorIcon = document.getElementById("monitorIcon");
     const monitorText = document.getElementById("monitorText");
     const monitorState = document.getElementById("monitorState");
+    const liveDot = document.getElementById("liveDot");
     const monitorBox = document.getElementById("monitorBox");
 
     function initAudio() {
@@ -802,9 +1286,7 @@
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         if (AudioContext) audioCtx = new AudioContext();
       }
-      if (audioCtx && audioCtx.state === "suspended") {
-        audioCtx.resume();
-      }
+      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
     }
 
     function playAlarmSound() {
@@ -830,9 +1312,7 @@
       alertTriggered = true;
       stopCallMonitor();
 
-      if ("vibrate" in navigator) {
-        navigator.vibrate([400, 150, 400, 150, 600]);
-      }
+      if ("vibrate" in navigator) navigator.vibrate([400, 150, 400, 150, 600]);
       playAlarmSound();
 
       document.getElementById("dangerReason").textContent = reasonText;
@@ -849,15 +1329,11 @@
     function clearMonitor() {
       monitorTranscript = "";
       lastAiCheckedLen = 0;
-      monitorBox.textContent = "等待監聽通話內容...（系統將透過華為雲粵語引擎即時轉錄並進行防詐攔截）";
+      monitorBox.textContent = "等待監聽通話內容...（系統將即時把對方講的話轉成文字並進行防詐攔截）";
     }
 
     function toggleCallMonitor() {
-      if (isMonitoring) {
-        stopCallMonitor();
-      } else {
-        startCallMonitor();
-      }
+      isMonitoring ? stopCallMonitor() : startCallMonitor();
     }
 
     async function startCallMonitor() {
@@ -874,21 +1350,20 @@
         isMonitoring = true;
 
         monitorBtn.classList.add("recording");
-        monitorIcon.textContent = "⏹️";
         monitorText.textContent = "正在監聽通話... 按此停止";
-        monitorState.textContent = "狀態：🔴 華為雲即時防護中（每 4.5 秒自動分析）";
+        liveDot.classList.add("active");
+        monitorState.textContent = "華為雲即時防護中（每 4.5 秒自動分析）";
         if (!monitorTranscript) monitorBox.textContent = "正在聆聽通話聲音...";
 
         recordMonitorSlice();
       } catch (err) {
-        monitorState.textContent = "狀態：無法開啟麥克風，請允許權限";
+        monitorState.textContent = "無法開啟麥克風，請允許權限";
         stopCallMonitor();
       }
     }
 
     function recordMonitorSlice() {
       if (!isMonitoring || !monitorStream || alertTriggered) return;
-
       const mimeType = getSupportedMimeType();
       const chunks = [];
       monitorRecorder = mimeType
@@ -906,18 +1381,13 @@
           const blob = new Blob(chunks, { type: finalMime });
           processMonitorSlice(blob, ext);
         }
-        // 立刻接續錄下一段 4.5 秒
-        if (isMonitoring && !alertTriggered) {
-          recordMonitorSlice();
-        }
+        if (isMonitoring && !alertTriggered) recordMonitorSlice();
       };
 
       try {
         monitorRecorder.start();
         monitorTimer = setTimeout(() => {
-          if (monitorRecorder && monitorRecorder.state === "recording") {
-            monitorRecorder.stop();
-          }
+          if (monitorRecorder && monitorRecorder.state === "recording") monitorRecorder.stop();
         }, 4500);
       } catch (e) {
         stopCallMonitor();
@@ -930,10 +1400,7 @@
         formData.append("file", blob, `slice.${ext}`);
         formData.append("lang", currentLang);
 
-        const res = await fetch("/api/transcribe", {
-          method: "POST",
-          body: formData
-        });
+        const res = await fetch("/api/transcribe", { method: "POST", body: formData });
         if (!res.ok) return;
         const data = await res.json();
         const text = (data.text || "").trim();
@@ -943,7 +1410,6 @@
         monitorBox.textContent = monitorTranscript;
         monitorBox.scrollTop = monitorBox.scrollHeight;
 
-        // 1. 關鍵詞即時攔截
         for (const kw of DANGER_KEYWORDS) {
           if (monitorTranscript.includes(kw)) {
             triggerDangerAlert(`對方提到高危詞彙「${kw}」，極大機會是詐騙電話，請立即掛斷！`);
@@ -951,7 +1417,6 @@
           }
         }
 
-        // 2. 累積滿 20 字送華為雲大模型深度分析
         if (!isAiChecking && monitorTranscript.length - lastAiCheckedLen >= 20) {
           backgroundAiCheck(monitorTranscript);
         }
@@ -961,7 +1426,7 @@
     async function backgroundAiCheck(textToCheck) {
       isAiChecking = true;
       lastAiCheckedLen = textToCheck.length;
-      monitorState.textContent = "狀態：🔴 華為雲 AI 深度覆核中...";
+      monitorState.textContent = "AI 深度覆核中...";
 
       try {
         const res = await fetch("/api/sos", {
@@ -977,16 +1442,13 @@
         }
       } catch (e) {} finally {
         isAiChecking = false;
-        if (isMonitoring) monitorState.textContent = "狀態：🔴 華為雲即時防護中（每 4.5 秒自動分析）";
+        if (isMonitoring) monitorState.textContent = "華為雲即時防護中（每 4.5 秒自動分析）";
       }
     }
 
     function stopCallMonitor() {
       isMonitoring = false;
-      if (monitorTimer) {
-        clearTimeout(monitorTimer);
-        monitorTimer = null;
-      }
+      if (monitorTimer) { clearTimeout(monitorTimer); monitorTimer = null; }
       if (monitorRecorder && monitorRecorder.state !== "inactive") {
         try { monitorRecorder.stop(); } catch (e) {}
       }
@@ -995,9 +1457,9 @@
         monitorStream = null;
       }
       monitorBtn.classList.remove("recording");
-      monitorIcon.textContent = "🛡️";
       monitorText.textContent = "開啟通話即時監聽";
-      monitorState.textContent = "狀態：待機中";
+      liveDot.classList.remove("active");
+      monitorState.textContent = "待機中";
     }
 
     /* ================= 分頁 3：可疑號碼快查 ================= */
@@ -1018,33 +1480,33 @@
       }
 
       let level = "warn";
-      let badge = "⚠️ 陌生號碼，請保持警覺";
+      let badge = "陌生號碼・請保持警覺";
       let type = "一般陌生來電";
       let msg = "這個號碼格式沒有明顯境外改號特徵，但如果對方自稱親友借錢、客服退款或警察調查，請先掛斷再向家人核實。";
 
       if (["88007777", "999", "110", "18222"].includes(num)) {
         level = "safe";
-        badge = "✅ 官方安全號碼";
+        badge = "官方安全號碼";
         type = "警方／官方防詐熱線";
         msg = "這是正規的官方防詐或緊急求助熱線，可以安心撥打查詢。";
       } else if (/^(\+|00)(853|852)/.test(num)) {
         level = "high";
-        badge = "🚨 極高風險！境外偽裝改號";
+        badge = "極高風險・境外偽裝改號";
         type = "境外偽裝本地來電（常見於公檢法、猜猜我是誰）";
         msg = "請特別小心！真正澳門或香港本地打來的電話，前面不會帶有 +853、+852 或 00。這類號碼極大機會是境外詐騙集團偽裝的，建議直接掛斷或拒接！";
       } else if (/^(\+|00)/.test(num)) {
         level = "high";
-        badge = "🚨 高風險！境外陌生來電";
+        badge = "高風險・境外陌生來電";
         type = "境外國際長途號碼";
         msg = "這是境外打來的電話。政府部門、銀行、海關和快遞公司絕對不會用境外號碼聯繫你處理帳戶異常或包裹問題，如無海外親友請勿接聽或回撥！";
       } else if (/^(170|171|165|400|95\d{6,})/.test(num)) {
         level = "high";
-        badge = "🚨 高風險！虛擬／推銷號段";
+        badge = "高風險・虛擬／推銷號段";
         type = "網路虛擬號碼或高頻推銷號段";
         msg = "這類號段經常被用來假冒客服退款、百萬保障扣費或高息投資詐騙。千萬不要按照對方指示下載軟件或開啟螢幕共享！";
       } else if (/^[268]\d{7}$/.test(num)) {
         level = "warn";
-        badge = "ℹ️ 本地號碼格式（仍須核實身份）";
+        badge = "本地號碼格式・仍須核實身份";
         type = "澳門本地 8 位數號碼";
         msg = "這是標準的澳門本地號碼格式，但近期「猜猜我是誰」騙徒也會使用本地太空卡犯案。若對方自稱親友換新號碼並急著借錢，務必先打原本號碼確認！";
       }
