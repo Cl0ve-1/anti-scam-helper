@@ -6,6 +6,7 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +27,11 @@ from huaweicloudsdksis.v1 import (
 from huaweicloudsdksis.v1.region.sis_region import SisRegion
 from openai import AsyncOpenAI
 from pydantic import BaseModel
+
+try:
+    from ddgs import DDGS
+except ImportError:
+    DDGS = None
 
 app = FastAPI(title="安心防詐助手 API")
 
@@ -48,36 +54,136 @@ llm_client = AsyncOpenAI(
     base_url=HUAWEI_BASE_URL,
 )
 
-# 第一層：高危關鍵詞與釣魚特徵快速規則
+# 澳門常用官方熱線白名單（8 位數字）
+OFFICIAL_PHONES = {
+    "28727688": "澳門通 / MPay 24小時官方客戶服務熱線",
+    "28558033": "澳門通 / MPay 24小時報失熱線",
+    "88007777": "澳門司法警察局防詐騙查詢熱線",
+    "993": "澳門司法警察局報案熱線",
+    "999": "澳門緊急求助熱線",
+    "88895566": "中國銀行澳門分行客戶服務熱線",
+    "28335533": "大西洋銀行 (BNU) 客戶服務熱線",
+    "88995588": "工銀澳門客戶服務熱線",
+    "1000": "澳門電訊 (CTM) 客戶服務熱線",
+}
+
+# 澳門及常見官方域名白名單（支援子域名匹配）
+OFFICIAL_DOMAINS = (
+    "gov.mo",
+    "macaupass.com",
+    "bocmacau.com",
+    "bnu.com.mo",
+    "icbc.com.mo",
+    "ctm.net",
+    "macau.ctm.net",
+    "cem-macau.com",
+    "macaowater.com",
+)
+
+# 第一層：極高危關鍵詞快速規則
 HIGH_RISK_RULES = [
     ("假冒公檢法詐騙", ["安全帳戶", "安全账户", "洗黑錢", "洗黑钱", "通緝令", "通缉令", "拘捕令", "清查資金", "清查资金", "資產公證", "资产公证", "凍結資產", "冻结资产"]),
     ("假冒客服／遠程控屏詐騙", ["螢幕共享", "屏幕共享", "遠程控制", "远程控制", "百萬保障", "百万保障", "自動扣費", "自动扣费"]),
     ("猜猜我是誰（假冒親友）", ["住院按金", "保釋金", "保释金", "俾人拉咗", "換咗新號碼", "换了新号码"]),
-    ("驗證碼／轉帳高危話術", ["驗證碼", "验证码", "唔好同屋企人講", "不要告訴家人", "不要告诉家人", "保密協議", "保密协议"]),
+    ("保密／轉帳高危話術", ["唔好同屋企人講", "不要告訴家人", "不要告诉家人", "保密協議", "保密协议"]),
 ]
 
-PHISHING_URL_PATTERN = re.compile(r"(https?://\S+|www\.\S+|\S+\.(xyz|top|vip|club|cc|info|icu|tk)\b)", re.IGNORECASE)
-PHISHING_HINTS = ["封禁", "凍結", "冻结", "異常", "异常", "解除", "積分", "积分", "過期", "过期", "包裹", "領取", "领取", "驗證", "验证", "撳", "點擊", "点击"]
+URL_EXTRACT_PATTERN = re.compile(
+    r"(https?://[^\s\u4e00-\u9fff]+|www\.[^\s\u4e00-\u9fff]+|\b[a-zA-Z0-9-]+\.(?:com|net|org|mo|hk|cn|xyz|top|vip|club|cc|info|icu|tk|app|io)(?:/[^\s\u4e00-\u9fff]*)?)",
+    re.IGNORECASE,
+)
+PHONE_EXTRACT_PATTERN = re.compile(r"(?:\+?853[\s\-]?|\+?852[\s\-]?|00\d{2,3}[\s\-]?)?(?<!\d)(?:\d{8}|\d{3,4}-\d{4}|99[39]|1000)(?!\d)")
 
 SYSTEM_PROMPT = """你是一位專為港澳長輩服務的「安心防詐助手」。
-輸入的內容可能來自語音轉錄或短訊／聊天截圖，包含粵語口語（例如：過數＝轉帳、撳＝點擊、俾＝給、呃＝騙、差佬＝警察、戶口＝帳戶、急住要錢＝急需借錢）。
+輸入可能包含粵語口語（例如：過數＝轉帳、撳＝點擊、俾＝給、呃＝騙、差佬＝警察、戶口＝帳戶），並會附上系統剛才透過【官方白名單與即時聯網搜尋】查到的電話與網址核實資料。
 
-請判斷該內容是否涉及詐騙，並嚴格只輸出以下 JSON 格式（不要輸出任何多餘文字或 Markdown 標記）：
+請結合訊息內容與核實資料，嚴格只輸出以下 JSON 格式（不要輸出任何多餘文字或 Markdown 標記）：
 {
   "risk_level": "high" 或 "safe",
-  "scam_type": "簡短詐騙類型名稱（若安全則寫『一般正常訊息』）",
-  "reply_message": "用溫暖、簡單、長輩易懂的繁體中文回覆（60至100字內），明確講出是否危險，並給出具體做法（例如：立刻掛線、不要點擊連結、先打原本電話找家人確認）。"
+  "scam_type": "簡短類型名稱（若安全則寫『官方正常通知』或『一般正常訊息』）",
+  "reply_message": "用溫暖、簡單、長輩易懂的繁體中文回覆（60至110字內）。明確說明是否安全、剛才查核到的電話或網址真偽，以及具體建議。"
 }
 
 判斷原則：
-1. 凡是涉及要求轉帳、借錢、交按金、點陌生網址、開螢幕共享、交出銀行密碼或短訊驗證碼、自稱公檢法或客服威脅扣費／封禁帳號，一律判為 "high"。
-2. 寧可從嚴保護長輩，只要有明顯可疑跡象就判為 "high"。
+1. 若訊息只是單純的業務結果通知（例如「申請審核成功」、「帳單已出」、「交易提醒」），**沒有**要求點擊陌生連結、**沒有**要求轉帳或交出驗證碼，且附帶的聯絡電話／網址經核實屬於該機構官方，應判為 "safe"，並在回覆中讓長輩放心（同時可順口提醒：若有疑問可直接撥打該官方熱線查詢）。
+2. 凡是要求轉帳、借錢、交按金、點擊非官方陌生網址、下載軟件、開螢幕共享、透露短訊驗證碼，或附帶的網址／電話經查證與該官方不符，一律判為 "high"。
+3. 注意：有時騙徒會在詐騙短訊結尾故意附上真實官方電話來混淆視聽，因此若訊息同時包含「可疑非官方連結」或「催促轉帳／解封」，即使電話是真的，仍須判為 "high"。
 """
 
 
 class SosRequest(BaseModel):
     user_id: str = "elder_01"
     message: str
+
+
+def _is_official_domain(host: str) -> bool:
+    host = host.lower().split(":")[0].strip(".")
+    return any(host == d or host.endswith("." + d) for d in OFFICIAL_DOMAINS)
+
+
+def _extract_entities(text: str):
+    """從文字中提取電話號碼與網址"""
+    urls = list(dict.fromkeys(URL_EXTRACT_PATTERN.findall(text)))
+    raw_phones = PHONE_EXTRACT_PATTERN.findall(text)
+    phones = []
+    seen = set()
+    for p in raw_phones:
+        cleaned = re.sub(r"[\s\-]", "", p)
+        if cleaned and cleaned not in seen:
+            seen.add(cleaned)
+            phones.append(cleaned)
+    return phones[:3], urls[:3]
+
+
+def _web_search_sync(query: str, max_results: int = 3) -> list[str]:
+    if DDGS is None:
+        return []
+    try:
+        results = DDGS().text(query, max_results=max_results)
+        snippets = []
+        for r in results or []:
+            title = r.get("title", "").strip()
+            href = r.get("href", "").strip()
+            body = r.get("body", "").strip()[:140]
+            snippets.append(f"- {title} ({href}): {body}")
+        return snippets
+    except Exception:
+        return []
+
+
+def _verify_entities_sync(text: str) -> str:
+    """檢查訊息中的電話與網址（先查本地白名單，未知項目再聯網搜尋）"""
+    phones, urls = _extract_entities(text)
+    if not phones and not urls:
+        return "訊息中未偵測到電話號碼或網址。"
+
+    reports = []
+
+    for phone in phones:
+        # 去除 +853 / 853 前綴比對澳門本地號碼
+        local_num = re.sub(r"^(\+?853|00853)", "", phone)
+        if local_num in OFFICIAL_PHONES:
+            reports.append(f"【電話 {phone}】已確認為官方白名單號碼：{OFFICIAL_PHONES[local_num]}。")
+        else:
+            hits = _web_search_sync(f'"{phone}" 澳門 OR 香港 OR 客服 OR 詐騙', max_results=3)
+            if hits:
+                reports.append(f"【電話 {phone} 聯網搜尋結果】\n" + "\n".join(hits))
+            else:
+                reports.append(f"【電話 {phone}】不在官方白名單內，且聯網未查到明確官方歸屬，請謹慎核對。")
+
+    for raw_url in urls:
+        parsed = urlparse(raw_url if raw_url.startswith("http") else "https://" + raw_url)
+        host = parsed.netloc or raw_url
+        if _is_official_domain(host):
+            reports.append(f"【網址 {raw_url}】網域 ({host}) 屬於已驗證的官方網域。")
+        else:
+            hits = _web_search_sync(f'"{host}" 官網 OR 詐騙 OR phishing', max_results=3)
+            if hits:
+                reports.append(f"【網址 {raw_url} ({host}) 聯網搜尋結果】\n" + "\n".join(hits))
+            else:
+                reports.append(f"【網址 {raw_url} ({host})】非已知官方網域，且未查到可靠官方紀錄，疑似釣魚連結。")
+
+    return "\n\n".join(reports)
 
 
 def rule_based_check(text: str):
@@ -89,14 +195,6 @@ def rule_based_check(text: str):
                     "scam_type": scam_type,
                     "reply_message": f"高度危險！內容提到「{kw}」，這是非常典型的{scam_type}手法。請千萬不要轉帳、不要開啟螢幕共享，也不要透露驗證碼，立刻掛斷電話或刪除訊息，並打給家人確認！",
                 }
-
-    if PHISHING_URL_PATTERN.search(text) and any(h in text for h in PHISHING_HINTS):
-        return {
-            "risk_level": "high",
-            "scam_type": "釣魚連結短訊詐騙",
-            "reply_message": "高度危險！這條訊息帶有可疑網址並催促你處理帳戶或包裹問題，極大機會是釣魚詐騙短訊。千萬不要點擊裡面的連結，直接刪除即可！",
-        }
-
     return None
 
 
@@ -182,6 +280,7 @@ def _call_huawei_ocr(image_bytes: bytes) -> str:
     lines = [block.words.strip() for block in resp.result.words_block_list if block.words and block.words.strip()]
     return "\n".join(lines)
 
+
 @app.get("/")
 async def serve_home():
     index_path = BASE_DIR / "index.html"
@@ -201,19 +300,32 @@ async def check_scam(req: SosRequest):
     if not msg:
         raise HTTPException(status_code=400, detail="訊息內容不可為空")
 
+    # 1. 本地極高危規則秒判
     rule_hit = rule_based_check(msg)
     if rule_hit:
         return rule_hit
+
+    # 2. 先核實訊息中的電話與網址（白名單 + 聯網搜尋，最多等 5 秒）
+    try:
+        verify_report = await asyncio.wait_for(
+            asyncio.to_thread(_verify_entities_sync, msg),
+            timeout=5.0,
+        )
+    except Exception:
+        verify_report = "聯網核實逾時，請僅依據訊息內容謹慎判斷。"
+
+    # 3. 將原始訊息與核實結果一併送給華為雲大模型判斷
+    user_payload = f"【用戶收到的訊息】\n{msg}\n\n【電話與網址核實資料】\n{verify_report}"
 
     try:
         completion = await llm_client.chat.completions.create(
             model=HUAWEI_MODEL_NAME,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": msg},
+                {"role": "user", "content": user_payload},
             ],
-            temperature=0.2,
-            max_tokens=300,
+            temperature=0.1,
+            max_tokens=320,
         )
         content = completion.choices[0].message.content or ""
         return _parse_llm_json(content)
